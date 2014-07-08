@@ -647,120 +647,6 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 	}
 	return rc;
 }
-#else
-void mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
-{
-	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
-
-	if (pdata == NULL) {
-		pr_err("%s: Invalid input data\n", __func__);
-		return;
-	}
-
-	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
-				panel_data);
-
-	if (!gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
-		pr_debug("%s:%d, reset line not configured\n",
-			   __func__, __LINE__);
-	}
-
-	if (!gpio_is_valid(ctrl_pdata->rst_gpio)) {
-		pr_debug("%s:%d, reset line not configured\n",
-			   __func__, __LINE__);
-		return;
-	}
-
-    pr_err("%s: enable = %d, pannel index=%d\n", __func__, enable, ctrl_pdata->index); 
-
-    if (get_pcb_version() < HW_VERSION__20) { /* For Single DSI: Find7 */
-        if (enable) {
-    		//pr_err("%s:lcd power up\n", __func__);
-    		gpio_set_value((ctrl_pdata->rst_gpio), 0);
-    		gpio_direction_output(58,0);
-
-    		mdelay(2);
-    	    //	wmb();
-            if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
-    			gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
-    		gpio_direction_output(58,1);
-    	    //	wmb();
-    	    mdelay(2);
-    	    gpio_set_value((ctrl_pdata->rst_gpio), 1);
-    	    mdelay(10);
-    	    if (ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT) {
-    		    pr_debug("%s: Panel Not properly turned OFF\n", __func__);
-    		    ctrl_pdata->ctrl_state &= ~CTRL_STATE_PANEL_INIT;
-    		    pr_debug("%s: Reset panel done\n", __func__);
-    	    }
-    	} else {
-    		gpio_set_value((ctrl_pdata->rst_gpio), 0);
-    		if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
-    			gpio_set_value((ctrl_pdata->disp_en_gpio), 0);
-    		gpio_direction_output(58,0);
-    	}
-    } else { /* For Dual DSI: Find7S */
-        if(ctrl_pdata->index==1 && get_boot_mode()!= MSM_BOOT_MODE__FACTORY){ /* For Find7S DSI 1 */
-        	if (enable) {
-        		//pr_err("%s:lcd virtual power up\n", __func__);
-
-        		if (ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT) {
-        			pr_err("%s: Panel Not properly turned OFF\n", __func__);
-        			ctrl_pdata->ctrl_state &= ~CTRL_STATE_PANEL_INIT;
-        			pr_err("%s: Reset panel done\n", __func__);
-        		}
-        	}
-    	} else { /* For DSI 0 */
-        	if (enable) {
-        		//pr_err("%s:lcd power up\n", __func__); 
-                gpio_direction_output(62,0);               /* GPIO_62 ---> 0 */
-                gpio_set_value((ctrl_pdata->rst_gpio), 1); /* GPIO_19 ---> 1 */
-                mdelay(5);
-                gpio_set_value((ctrl_pdata->rst_gpio), 0); /* GPIO_19 ---> 0 */
-                mdelay(10);
-                gpio_set_value((ctrl_pdata->rst_gpio), 1); /* GPIO_19 ---> 1 */
-                mdelay(10);
-                if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
-        			gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
-        		gpio_direction_output((ctrl_pdata->disp_en_gpio),1); /* GPIO_58 --->1 */
-				mdelay(2);
-				gpio_direction_output(46,1); 
-				mdelay(10);
-				gpio_direction_output(46,0); 
-				mdelay(2);
-				gpio_direction_output((ctrl_pdata->disp_en_gpio),0);
-				mdelay(10);
-				gpio_direction_output((ctrl_pdata->disp_en_gpio),1);
-				mdelay(2);
-				gpio_direction_output(46,1); 
-        	    if (ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT) {
-        		    pr_debug("%s: Panel Not properly turned OFF\n", __func__);
-        		    ctrl_pdata->ctrl_state &= ~CTRL_STATE_PANEL_INIT;
-        		    pr_debug("%s: Reset panel done\n", __func__);
-        	    }
-        	} else {
-				gpio_set_value((ctrl_pdata->rst_gpio), 1); /* GPIO_19 ---> 1 */
-				mdelay(5);
-        		gpio_set_value((ctrl_pdata->rst_gpio), 0); /* GPIO_19 ---> 0 */
-				mdelay(10);
-				gpio_set_value((ctrl_pdata->rst_gpio), 1); /* GPIO_19 --->1 */
-				mdelay(10);
-				gpio_direction_output(46,0);   //add for find7s enable display -5v
-				mdelay(2);
-        		if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
-        			gpio_set_value((ctrl_pdata->disp_en_gpio), 0);
-                gpio_direction_output((ctrl_pdata->disp_en_gpio),0); /* GPIO_58 ---> 0 */
-				mdelay(10);
-                gpio_direction_output(62,0);               /* GPIO_62 ---> 0 */
-        	}
-    	}
-    }
-
-	//pr_err("%s: gpio 19=%d", __func__,gpio_get_value(ctrl_pdata->rst_gpio));
-	//pr_err("%s:---\n", __func__);
-}
-//yanghai modify end
-#endif
 
 static char caset[] = {0x2a, 0x00, 0x00, 0x03, 0x00};	/* DTYPE_DCS_LWRITE */
 static char paset[] = {0x2b, 0x00, 0x00, 0x05, 0x00};	/* DTYPE_DCS_LWRITE */
@@ -831,7 +717,6 @@ static struct mdss_dsi_ctrl_pdata *get_rctrl_data(struct mdss_panel_data *pdata)
 static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 							u32 bl_level)
 {
-#ifndef CONFIG_VENDOR_EDIT
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 
 	if (pdata == NULL) {
@@ -876,44 +761,6 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 			__func__);
 		break;
 	}
-#else
-	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
-	if(0){
-	        if (pdata == NULL) {
-		        pr_err("%s: Invalid input data\n", __func__);
-	     	    return;
-	         }
-
- 	       ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
-				panel_data);
-
-	/*
-	 * Some backlight controllers specify a minimum duty cycle
-	 * for the backlight brightness. If the brightness is less
-	 * than it, the controller can malfunction.
-	 */
-
-	if ((bl_level < pdata->panel_info.bl_min) && (bl_level != 0))
-		bl_level = pdata->panel_info.bl_min;
-
-	switch (ctrl_pdata->bklt_ctrl) {
-	case BL_WLED:
-		led_trigger_event(bl_led_trigger, bl_level);
-		break;
-	case BL_PWM:
-		mdss_dsi_panel_bklt_pwm(ctrl_pdata, bl_level);
-		break;
-	case BL_DCS_CMD:
-		mdss_dsi_panel_bklt_dcs(ctrl_pdata, bl_level);
-		break;
-	default:
-		pr_err("%s: Unknown bl_ctrl configuration\n",
-			__func__);
-		break;
-	    }
-    }
-lm3630_bank_a_update_status(bl_level);
-#endif
 }
 
 static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)

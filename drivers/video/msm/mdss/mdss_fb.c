@@ -451,10 +451,6 @@ static ssize_t mdss_set_cabc(struct device *dev,
 
 #endif /*VENDOR_EDIT*/
 
-
-static DEVICE_ATTR(msm_fb_type, S_IRUGO, mdss_fb_get_type, NULL);
-static DEVICE_ATTR(msm_fb_split, S_IRUGO, mdss_fb_get_split, NULL);
-static DEVICE_ATTR(show_blank_event, S_IRUGO, mdss_mdp_show_blank_event, NULL);
 /* OPPO 2013-11-26 yxq Add begin for suspend the device */
 #ifdef VENDOR_EDIT
 static DEVICE_ATTR(lcdoff, S_IRUGO, mdss_mdp_lcdoff_event, NULL);
